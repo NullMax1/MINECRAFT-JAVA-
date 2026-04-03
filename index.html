@@ -478,67 +478,98 @@
     <!-- ===== LOGICA DE LANDSCAPE ===== -->
     <script>
       function ocultarAviso() {
-        // Agregar clase al <html> para sobrepasar el media query !important
         document.documentElement.classList.add('force-landscape');
-        document.getElementById('rotate-notice').style.cssText = 'display:none!important';
-        document.getElementById('game-wrapper').style.cssText  = 'display:block!important';
+        var notice  = document.getElementById('rotate-notice');
+        var wrapper = document.getElementById('game-wrapper');
+        notice.style.cssText  = 'display:none!important';
+        wrapper.style.cssText = 'display:block!important';
       }
 
-      function usarRotacionCSS() {
-        // Fallback: rotar el wrapper 90 grados via transform
+      function aplicarRotacionCSS() {
+        // Obtenemos las dimensiones REALES de la pantalla en portrait
+        var sw = window.screen.width  < window.screen.height ? window.screen.width  : window.screen.height;
+        var sh = window.screen.width  < window.screen.height ? window.screen.height : window.screen.width;
+        // sw = ancho corto (portrait width), sh = alto largo (portrait height)
         var wrapper = document.getElementById('game-wrapper');
-        var w = window.innerWidth;
-        var h = window.innerHeight;
-        ocultarAviso();
-        if (h > w) {
-          // Estamos en portrait: rotar el contenido
-          wrapper.style.position        = 'fixed';
-          wrapper.style.top             = '0';
-          wrapper.style.left            = '0';
-          wrapper.style.width           = h + 'px';
-          wrapper.style.height          = w + 'px';
-          wrapper.style.transform       = 'rotate(90deg) translateY(-' + w + 'px)';
-          wrapper.style.transformOrigin = 'top left';
-          document.body.style.overflow  = 'hidden';
-        }
+        // El wrapper debe ocupar sh x sw (landscape) pero rotado para caber en portrait
+        wrapper.style.cssText = [
+          'display:block!important',
+          'position:fixed',
+          'top:0',
+          'left:0',
+          'width:'  + sh + 'px',       // ancho = alto de pantalla portrait
+          'height:' + sw + 'px',       // alto  = ancho de pantalla portrait
+          'transform-origin: top left',
+          'transform: rotate(90deg) translateX(0) translateY(-' + sw + 'px)'
+        ].join(';');
+        document.body.style.overflow = 'hidden';
+        document.body.style.width    = sw + 'px';
+        document.body.style.height   = sh + 'px';
       }
 
       function forzarLandscape() {
-        // Metodo 1: Screen Orientation API moderna
+        // Metodo 1: Screen Orientation API moderna (Chrome Android)
         if (screen.orientation && typeof screen.orientation.lock === 'function') {
           screen.orientation.lock('landscape').then(function() {
             ocultarAviso();
           }).catch(function() {
-            usarRotacionCSS();
+            // El navegador rechazó el lock → usamos rotación CSS
+            ocultarAviso();
+            if (window.innerHeight > window.innerWidth) {
+              aplicarRotacionCSS();
+            }
           });
         }
         // Metodo 2: Firefox antiguo
         else if (screen.mozLockOrientation) {
           var r = screen.mozLockOrientation('landscape');
-          if (r) { ocultarAviso(); } else { usarRotacionCSS(); }
+          ocultarAviso();
+          if (!r && window.innerHeight > window.innerWidth) { aplicarRotacionCSS(); }
         }
-        // Metodo 3: IE / Edge antiguo
+        // Metodo 3: Edge/IE antiguo
         else if (screen.msLockOrientation) {
           var r2 = screen.msLockOrientation('landscape');
-          if (r2) { ocultarAviso(); } else { usarRotacionCSS(); }
+          ocultarAviso();
+          if (!r2 && window.innerHeight > window.innerWidth) { aplicarRotacionCSS(); }
         }
-        // Metodo 4: Solo rotar con CSS
+        // Metodo 4: Fallback puro CSS
         else {
-          usarRotacionCSS();
+          ocultarAviso();
+          if (window.innerHeight > window.innerWidth) { aplicarRotacionCSS(); }
         }
       }
 
-      // Si el usuario rota el telefono manualmente, ocultar el aviso automaticamente
+      // Si el usuario rota el telefono manualmente, ocultar aviso y limpiar rotación CSS
       window.addEventListener('orientationchange', function() {
         setTimeout(function() {
-          if (window.innerWidth > window.innerHeight) { ocultarAviso(); }
+          if (window.innerWidth > window.innerHeight) {
+            ocultarAviso();
+            // Limpiar rotación CSS porque ya está en landscape real
+            var wrapper = document.getElementById('game-wrapper');
+            wrapper.style.transform      = '';
+            wrapper.style.width          = '';
+            wrapper.style.height         = '';
+            wrapper.style.position       = '';
+            document.body.style.overflow = 'hidden';
+            document.body.style.width    = '';
+            document.body.style.height   = '';
+          }
         }, 350);
       });
 
       // matchMedia como respaldo
       try {
         var mq = window.matchMedia('(orientation: landscape)');
-        var handler = function(e) { if (e.matches) { ocultarAviso(); } };
+        var handler = function(e) {
+          if (e.matches) {
+            ocultarAviso();
+            var wrapper = document.getElementById('game-wrapper');
+            wrapper.style.transform = '';
+            wrapper.style.width     = '';
+            wrapper.style.height    = '';
+            wrapper.style.position  = '';
+          }
+        };
         if (mq.addEventListener) { mq.addEventListener('change', handler); }
         else if (mq.addListener)  { mq.addListener(handler); }
       } catch(e) {}
