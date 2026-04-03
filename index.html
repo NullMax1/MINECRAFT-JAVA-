@@ -49,15 +49,18 @@
       pointer-events: none;
     }
 
-    /* Mostrar solo en portrait */
+    /* Mostrar solo en portrait (cuando NO se forzó landscape con el botón) */
     @media screen and (orientation: portrait) {
-      #rotate-notice { display: flex !important; }
-      #game-wrapper  { display: none !important; }
+      html:not(.force-landscape) #rotate-notice { display: flex !important; }
+      html:not(.force-landscape) #game-wrapper  { display: none !important; }
     }
     @media screen and (orientation: landscape) {
       #rotate-notice { display: none !important; }
       #game-wrapper  { display: block !important; }
     }
+    /* Cuando el usuario tocó el botón: forzar game visible sin importar orientación */
+    html.force-landscape #rotate-notice { display: none !important; }
+    html.force-landscape #game-wrapper  { display: block !important; }
 
     /* Icono del telefono */
     .phone-wrap {
@@ -475,8 +478,10 @@
     <!-- ===== LOGICA DE LANDSCAPE ===== -->
     <script>
       function ocultarAviso() {
-        document.getElementById('rotate-notice').style.display = 'none';
-        document.getElementById('game-wrapper').style.display  = 'block';
+        // Agregar clase al <html> para sobrepasar el media query !important
+        document.documentElement.classList.add('force-landscape');
+        document.getElementById('rotate-notice').style.cssText = 'display:none!important';
+        document.getElementById('game-wrapper').style.cssText  = 'display:block!important';
       }
 
       function usarRotacionCSS() {
